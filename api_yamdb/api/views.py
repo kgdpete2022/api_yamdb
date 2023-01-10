@@ -8,7 +8,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
-from users.models import User
+
 from .serializers import (
     CategorySerializer,
     GenreSerializer,
@@ -18,8 +18,9 @@ from .serializers import (
     UserSerializer,
     UserTokenSerializer
 )
+
 from .mixins import CreateListDestroyViewSet
-from reviews.models import Category, Genre, Title
+from reviews.models import Category, Genre, Title, User
 from .permissions import (AnonimReadOnly, IsAdminPermission)
 
 
