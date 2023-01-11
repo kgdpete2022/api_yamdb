@@ -2,6 +2,8 @@ from rest_framework import permissions
 
 
 class CommentsReviewPermission(permissions.BasePermission):
+    """Разрешает удалять/добавлять комментарии и отзывы
+    только автору, администраторам и суперпользователям."""
     def has_permission(self, request, view):
         return (
             request.method in permissions.SAFE_METHODS
@@ -18,7 +20,7 @@ class CommentsReviewPermission(permissions.BasePermission):
 
 
 class AdminOrReadOnly(permissions.BasePermission):
-
+    """Разрешает анонимному пользователю только безопасные запросы."""
     def has_permission(self, request, view):
         return (
             request.method in permissions.SAFE_METHODS
@@ -28,7 +30,7 @@ class AdminOrReadOnly(permissions.BasePermission):
 
 
 class IsAdminPermission(permissions.BasePermission):
-
+    """Проверяет на наличие прав администратора."""
     def has_permission(self, request, view):
         return (
             request.user.is_authenticated

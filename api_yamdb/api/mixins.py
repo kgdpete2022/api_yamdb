@@ -9,4 +9,4 @@ class CreateListDestroyViewSet(mixins.CreateModelMixin,
                                viewsets.GenericViewSet):
     """Вьюсет, позволяющий осуществлять GET, POST и DELETE запросы."""
 
-    permission_classes = (AnonimReadOnly)
+    permission_classes = (AnonimReadOnly,)

@@ -8,6 +8,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
 from .serializers import (
     CategorySerializer,
@@ -16,12 +17,14 @@ from .serializers import (
     TitleSerializer,
     UserRegSerializer, 
     UserSerializer,
-    UserTokenSerializer
+    UserTokenSerializer,
+    ReviewSerializer,
+    CommentSerializer
 )
 
 from .mixins import CreateListDestroyViewSet
 from reviews.models import Category, Genre, Title, User
-from .permissions import (AnonimReadOnly, IsAdminPermission)
+from .permissions import (AnonimReadOnly, IsAdminPermission, CommentsReviewPermission)
 
 
 class CategoryViewSet(CreateListDestroyViewSet):
@@ -43,7 +46,7 @@ class TitleViewSet(viewsets.ModelViewSet):
 
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
-    permission_classes = (AnonimReadOnly)
+    permission_classes = [AnonimReadOnly,]
 
     def get_serializer_class(self):
         """Определяет какой сериализатор будет использоваться
@@ -53,18 +56,11 @@ class TitleViewSet(viewsets.ModelViewSet):
         return TitleSerializer
 
 
-class CommentsViewSet(viewsets.ModelViewSet):
-    pass
-
-
-class ReviewViewSet(viewsets.ModelViewSet):
-    pass
-
-
 class UserViewSet(viewsets.ModelViewSet):
+    """Вьюсет для работы с объектами класса User."""
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminPermission]
+    permission_classes = [IsAdminPermission,]
     lookup_field = 'username'
     pagination_class = PageNumberPagination
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
@@ -74,7 +70,7 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(
         detail=False,
         methods=['GET', 'PATCH'],
-        permission_classes=[IsAuthenticated]
+        permission_classes=[IsAuthenticated,]
     )
     def me(self, request):
         user = request.user
@@ -128,3 +124,35 @@ def check_code_and_create_token(request):
         jwt_token = AccessToken.for_user(user)
         return Response({'token': str(jwt_token)}, status=status.HTTP_200_OK)
     return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    """Вьюсет для работы с объектами класса Review."""
+
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly,
+                          CommentsReviewPermission]
+
+    def get_queryset(self):
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
+        return title.reviews.all()
+
+    def perform_create(self, serializer):
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
+        serializer.save(author=self.request.user, title=title)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """Вьюсет для работы с объектами класса Comment."""
+
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly,
+                          CommentsReviewPermission]
+
+    def get_queryset(self):
+        review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
+        return review.comments.all()
+
+    def perform_create(self, serializer):
+        review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
+        serializer.save(author=self.request.user, review=review)
