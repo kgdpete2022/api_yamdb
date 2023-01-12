@@ -1,32 +1,70 @@
+from datetime import datetime
+
+from django.contrib.auth import get_user_model
+from django.core.validators import (
+    MaxValueValidator,
+    MinValueValidator,
+    RegexValidator
+)
 from django.db import models
-from django.contrib.auth.models import AbstractUser
-from django.core.validators import RegexValidator
-from django.core.validators import MaxValueValidator, MinValueValidator
 
+from api_yamdb.settings import LENGTH_TEXT
 
-# валидаторы добавим позже
+User = get_user_model()
 
 
 class Category(models.Model):
     """Класс категорий."""
+
     name = models.CharField(
-        max_length=200,
+        max_length=256,
+        verbose_name='Hазвание',
+        db_index=True
     )
     slug = models.SlugField(
-        max_length=70,
+        max_length=50,
+        verbose_name='slug',
         unique=True,
+        validators=[RegexValidator(
+            regex=r'^[-a-zA-Z0-9_]+$',
+            message='Слаг категории содержит недопустимый символ'
+        )]
     )
+
+    class Meta:
+        verbose_name = 'Категория'
+        verbose_name_plural = 'Категории'
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name[:LENGTH_TEXT]
 
 
 class Genre(models.Model):
     """Класс жанров."""
+
     name = models.CharField(
-        max_length=200,
+        max_length=75,
+        verbose_name='Hазвание',
+        db_index=True
     )
     slug = models.SlugField(
-        max_length=70,
+        max_length=50,
+        verbose_name='slug',
         unique=True,
+        validators=[RegexValidator(
+            regex=r'^[-a-zA-Z0-9_]+$',
+            message='Слаг жанра содержит недопустимый символ'
+        )]
     )
+
+    class Meta:
+        verbose_name = 'Жанр'
+        verbose_name_plural = 'Жанры'
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name[:LENGTH_TEXT]
 
 
 class Title(models.Model):
@@ -34,153 +72,155 @@ class Title(models.Model):
 
     name = models.CharField(
         max_length=150,
-
+        verbose_name='Hазвание',
+        db_index=True
     )
-    year = models.PositiveIntegerField()
-
+    year = models.PositiveIntegerField(
+        verbose_name='год выпуска',
+        validators=[
+            MinValueValidator(
+                0,
+                message='Значение года не может быть отрицательным'
+            ),
+            MaxValueValidator(
+                int(datetime.now().year),
+                message='Значение года не может быть больше текущего'
+            )
+        ],
+        db_index=True
+    )
+    description = models.TextField(
+        verbose_name='описание',
+        blank=True
+    )
     genre = models.ManyToManyField(
         Genre,
         through='GenreTitle',
         related_name='titles',
-    )
+        verbose_name='жанр'
 
+    )
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         related_name='titles',
+        verbose_name='категория',
         null=True
     )
 
+    class Meta:
+        verbose_name = 'Произведение'
+        verbose_name_plural = 'Произведения'
+        ordering = ('-year', 'name')
+
+    def __str__(self):
+        return self.name[:LENGTH_TEXT]
+
 
 class GenreTitle(models.Model):
-    """Kласс, связывающий жанры и произведения."""
+    """Вспомогательный класс, связывающий жанры и произведения."""
+
     genre = models.ForeignKey(
         Genre,
         on_delete=models.CASCADE,
+        verbose_name='Жанр'
     )
     title = models.ForeignKey(
         Title,
         on_delete=models.CASCADE,
+        verbose_name='произведение'
     )
 
-
-class User(AbstractUser):
-    ROLE_USER = 'user'
-    ROLE_MODERATOR = 'moderator'
-    ROLE_ADMIN = 'admin'
-
-    ROLES = (
-        (ROLE_USER, 'Пользователь'),
-        (ROLE_MODERATOR, 'Модератор'),
-        (ROLE_ADMIN, 'Администратор'),
-    )
-
-    username = models.CharField(
-        max_length=150,
-        verbose_name='Имя пользователя',
-        unique=True,
-        validators=[RegexValidator(
-            regex=r'^[\w.@+-]+$')]
-    )
-    email = models.EmailField(
-        max_length=254,
-        verbose_name='email',
-        unique=True
-    )
-    first_name = models.CharField(
-        max_length=150,
-        verbose_name='имя',
-        blank=True
-    )
-    last_name = models.CharField(
-        max_length=150,
-        verbose_name='фамилия',
-        blank=True
-    )
-    bio = models.TextField(
-        verbose_name='биография',
-        blank=True
-    )
-    role = models.CharField(
-        max_length=max([len(role[0]) for role in ROLES]),
-        verbose_name='роль',
-        choices=ROLES,
-        default=ROLE_USER
-    )
+    class Meta:
+        verbose_name = 'Соответствие жанра и произведения'
+        verbose_name_plural = 'Таблица соответствия жанров и произведений'
+        ordering = ('id',)
 
     def __str__(self):
-        return self.username
-
-    @property
-    def is_user(self):
-        return self.role == self.ROLE_USER
-
-    @property
-    def is_moderator(self):
-        return self.role == self.ROLE_MODERATOR
-
-    @property
-    def is_admin(self):
-        return (
-            self.role == self.ROLE_ADMIN
-            or self.is_superuser
-        )
+        return f'{self.title} принадлежит жанру/ам {self.genre}'
 
 
 class Review(models.Model):
-    """Модель отзыва на произведение."""
+    """Класс отзывов."""
 
-    title = models.ForeignKey(Title, on_delete=models.CASCADE,
-                              related_name='reviews',
-                              verbose_name='произведение')
-    text = models.TextField('отзыв')
-    author = models.ForeignKey(User, on_delete=models.CASCADE,
-                               related_name='reviews',
-                               verbose_name='автор')
-    score = models.PositiveSmallIntegerField(
-        'оценка',
+    text = models.TextField(
+        verbose_name='текст'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+        verbose_name='Aвтор'
+    )
+    score = models.PositiveIntegerField(
+        verbose_name='Oценка',
         validators=[
-            MinValueValidator(1, message='оценка не может быть меньше 1'),
-            MaxValueValidator(10, message='оценка не может быть больше 10')
+            MinValueValidator(
+                1,
+                message='Введенная оценка ниже допустимой'
+            ),
+            MaxValueValidator(
+                10,
+                message='Введенная оценка выше допустимой'
+            ),
         ]
     )
-    pub_date = models.DateTimeField('дата публикации', auto_now_add=True)
+    pub_date = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Дата публикации',
+        db_index=True
+    )
+    title = models.ForeignKey(
+        Title,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+        verbose_name='произведение',
+        null=True
+    )
 
     class Meta:
-        ordering = ['-pub_date']
-        constraints = [models.UniqueConstraint(fields=['author', 'title'],
-                                               name='unique_review')]
-        indexes = [
-            models.Index(fields=['pub_date']),
-            models.Index(fields=['score']),
-        ]
-        verbose_name = 'отзыв'
-        verbose_name_plural = 'отзывы'
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
+        ordering = ('-pub_date',)
+        constraints = (
+            models.UniqueConstraint(
+                fields=['author', 'title'],
+                name='unique_author_title'
+            ),
+        )
 
     def __str__(self):
-        return self.text
+        return self.text[:LENGTH_TEXT]
 
 
 class Comment(models.Model):
-    """Модель комментария к отзыву."""
+    """Класс комментариев."""
 
-    review = models.ForeignKey(Review, on_delete=models.CASCADE,
-                               related_name='comments',
-                               verbose_name='отзыв')
-    text = models.TextField('комментарий')
-    author = models.ForeignKey(User, on_delete=models.CASCADE,
-                               related_name='comments',
-                               verbose_name='автор')
-    pub_date = models.DateTimeField('дата публикации', auto_now_add=True)
+    text = models.TextField(
+        verbose_name='текст'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='Aвтор'
+    )
+    pub_date = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Дата публикации',
+        db_index=True
+    )
+    review = models.ForeignKey(
+        Review,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='oтзыв',
+    )
 
     class Meta:
-        ordering = ['-pub_date']
-        indexes = [
-            models.Index(fields=['author']),
-            models.Index(fields=['pub_date']),
-        ]
-        verbose_name = 'комментарий'
-        verbose_name_plural = 'комментарии'
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
+        ordering = ('-pub_date',)
 
     def __str__(self):
-        return self.text
+        return self.text[:LENGTH_TEXT]
