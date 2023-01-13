@@ -129,4 +129,3 @@ class ReviewAdmin(ImportExportModelAdmin):
         'score',
         'pub_date'
     ]
-

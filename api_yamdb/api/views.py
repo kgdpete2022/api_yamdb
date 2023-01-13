@@ -9,7 +9,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
-from reviews.models import Category, Comments, Genre, Review, Title, User
+from reviews.models import Category, Genre, Title, User
 
 from .filters import TitleFilter
 from .permissions import (AdminOrReadOnly,
@@ -54,7 +54,9 @@ class TitleViewSet(viewsets.ModelViewSet):
     filterset_class = TitleFilter
 
     def get_queryset(self):
-        return Title.objects.all().annotate(rating=Avg('reviews__score'),).order_by('id')
+        return Title.objects.all().annotate(
+            rating=Avg('reviews__score'),
+        ).order_by('id')
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
