@@ -23,7 +23,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class TitleCustomSerializer(serializers.ModelSerializer):
-    
+
     class Meta:
         model = Title
         fields = [
@@ -90,7 +90,8 @@ class UserRegSerializer(serializers.Serializer):
 
     def validate(self, data):
         email_username_taken = User.objects.filter(
-            Q(email=data.get('email')) | Q(username=data.get('username'))).exists()
+            Q(email=data.get('email')) | Q(username=data.get('username'))
+        ).exists()
         user_exists = User.objects.filter(
             email=data.get('email'),
             username=data.get('username')).exists()
