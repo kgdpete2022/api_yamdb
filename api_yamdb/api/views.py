@@ -9,8 +9,10 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
-from reviews.models import Category, Genre, Title, User
 
+import uuid
+
+from reviews.models import Category, Genre, Title, User
 from .filters import TitleFilter
 from .permissions import (AdminOrReadOnly,
                           AuthorOrHigher,
@@ -133,10 +135,10 @@ class UserViewSet(viewsets.ModelViewSet):
 def registration(request):
     serializer = UserRegSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    username = serializer.data.get('username')
-    email = serializer.data.get('email')
+    username = serializer.validated_data.get('username')
+    email = serializer.validated_data.get('email')
     user, _ = User.objects.get_or_create(email=email, username=username)
-    confirmation_code = default_token_generator.make_token(user)
+    confirmation_code = uuid.uuid4().hex
 
     mail = (
         'Подтверждение регистрации',
