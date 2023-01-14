@@ -1,13 +1,13 @@
 import os
 from pathlib import Path
+from django.core.validators import RegexValidator
 
-# import os
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 from django.conf.global_settings import DATETIME_INPUT_FORMATS
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# load_dotenv()
+load_dotenv()
 # SECURITY WARNING: keep the secret key used in production secret!
 # SECRET_KEY = os.getenv('SECRET_KEY')
 SECRET_KEY = 'p&l%385148kslhtyn^##a1)ilz@4zqj=rq&agdol^##zgl9(vs'
@@ -116,7 +116,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = ((BASE_DIR / 'static/'),)
-
+CSV_FILES_DIR = os.path.join(BASE_DIR, 'static/data')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -130,3 +130,5 @@ EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
 
 DATETIME_INPUT_FORMATS += ('%Y-%m-%dT%H:%M:%S.%f%z',)
+
+VALIDATORS = [RegexValidator(regex=r'^[-a-zA-Z0-9_]+$')]
