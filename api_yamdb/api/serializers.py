@@ -1,5 +1,7 @@
 import re
 
+from django.db.models import Q
+
 from rest_framework import serializers
 
 from reviews.models import Category, Comments, Genre, Review, Title, User
@@ -20,18 +22,8 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ['name', 'slug']
 
 
-class TitlePostSerializer(serializers.ModelSerializer):
-    genre = serializers.SlugRelatedField(
-        queryset=Genre.objects.all(),
-        slug_field='slug',
-        many=True
-    )
-    category = serializers.SlugRelatedField(
-        queryset=Category.objects.all(),
-        slug_field='slug'
-    )
-    rating = serializers.IntegerField(required=False)
-
+class TitleCustomSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = Title
         fields = [
@@ -45,22 +37,29 @@ class TitlePostSerializer(serializers.ModelSerializer):
         ]
 
 
+class TitlePostSerializer(TitleCustomSerializer):
+    genre = serializers.SlugRelatedField(
+        queryset=Genre.objects.all(),
+        slug_field='slug',
+        many=True
+    )
+    category = serializers.SlugRelatedField(
+        queryset=Category.objects.all(),
+        slug_field='slug'
+    )
+    rating = serializers.IntegerField(required=False)
+
+    class Meta(TitleCustomSerializer.Meta):
+        pass
+
+
 class TitleGetSerializer(serializers.ModelSerializer):
     rating = serializers.IntegerField(read_only=True)
     genre = GenreSerializer(read_only=True, many=True)
     category = CategorySerializer(read_only=True)
 
-    class Meta:
-        model = Title
-        fields = [
-            'id',
-            'name',
-            'year',
-            'description',
-            'genre',
-            'category',
-            'rating'
-        ]
+    class Meta(TitleCustomSerializer.Meta):
+        pass
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -90,15 +89,13 @@ class UserRegSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        email_taken = User.objects.filter(
-            email=data.get('email')).exists()
-        username_taken = User.objects.filter(
-            username=data.get('username')).exists()
+        email_username_taken = User.objects.filter(
+            Q(email=data.get('email')) | Q(username=data.get('username'))).exists()
         user_exists = User.objects.filter(
             email=data.get('email'),
             username=data.get('username')).exists()
 
-        if (email_taken or username_taken) and not user_exists:
+        if email_username_taken and not user_exists:
             raise serializers.ValidationError(
                 'Пользователем с таким адресом эл. почты'
                 'и именем уже существует,'
